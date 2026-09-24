@@ -8,10 +8,10 @@
 
   Eight of the nine sensing elements detect reducing gases: their resistance FALLS as gas rises,
   so the datasheet's Rs/R0 ratio drops below 1.0. The GM-102B detects NO2, an oxidizing gas, and
-  its resistance RISES - so its Rs/R0 climbs ABOVE 1.0 instead. A sketch that tests
-  "ratio < 0.5 means gas" is exactly backwards on that one part.
+  its resistance RISES, so its Rs/R0 climbs ABOVE 1.0 instead. A sketch that tests
+  "ratio < 0.5 means gas" is backwards on that part.
 
-  getGasResponse() removes the trap: it is R0/Rs on falling-Rs parts and Rs/R0 on rising-Rs parts,
+  getGasResponse() handles this: it is R0/Rs on falling-Rs parts and Rs/R0 on rising-Rs parts,
   so it sits near 1.0 in clean air and RISES with target gas on all nine. It is also the direction
   the datasheets quote sensitivity in, so it compares directly against getRatedSensitivity():
 
@@ -43,15 +43,15 @@
 #include <SparkFun_GMX02B.h>
 
 // Uncomment the board you're using
-// SfeGM102BArdI2C mySensor;   // GM-102B - nitrogen dioxide (NO2)
-// SfeGM202BArdI2C mySensor;   // GM-202B - alcohol, smoke
-// SfeGM302BArdI2C mySensor;   // GM-302B - ethanol
-// SfeGM402BArdI2C mySensor;   // GM-402B - methane, propane
-// SfeGM502BArdI2C mySensor;   // GM-502B - VOCs
-// SfeGM512BArdI2C mySensor;   // GM-512B - breath odor
-SfeGM602BArdI2C mySensor;      // GM-602B - hydrogen sulfide (H2S)
-// SfeGM702BArdI2C mySensor;   // GM-702B - carbon monoxide (CO)
-// SfeGM802BArdI2C mySensor;   // GM-802B - ammonia (NH3)
+// SfeGM102BArd mySensor;   // GM-102B - nitrogen dioxide (NO2)
+// SfeGM202BArd mySensor;   // GM-202B - alcohol, smoke
+// SfeGM302BArd mySensor;   // GM-302B - ethanol
+// SfeGM402BArd mySensor;   // GM-402B - methane, propane
+// SfeGM502BArd mySensor;   // GM-502B - VOCs
+// SfeGM512BArd mySensor;   // GM-512B - breath odor
+SfeGM602BArd mySensor;      // GM-602B - hydrogen sulfide (H2S)
+// SfeGM702BArd mySensor;   // GM-702B - carbon monoxide (CO)
+// SfeGM802BArd mySensor;   // GM-802B - ammonia (NH3)
 
 // Flag for an elevated reading. Tune this for your environment. getRatedSensitivity() is a
 // reasonable upper anchor (the response this part is specified to reach at its rated ppm).

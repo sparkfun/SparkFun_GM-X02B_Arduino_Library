@@ -3,12 +3,12 @@
 
   The ADC101C021 keeps two extra registers in hardware: the lowest and the highest conversion it
   has seen since each was last cleared. In automatic conversion mode they update on every
-  conversion with no I2C traffic at all, so a gas spike between your polls still gets recorded.
+  conversion with no I2C traffic, so a gas spike between your polls still gets recorded.
 
   Which register holds "most gas" depends on the part. On the eight reducing-gas sensors, more gas
-  means lower Rs, which means HIGHER ADC counts - so peak gas is the highest conversion. On the
-  GM-102B (NO2) it is the opposite, and peak gas is the LOWEST conversion. getPeakGasCounts() and
-  clearPeakGasCounts() pick the right register for you; getLowestConversion() and
+  means lower Rs and a HIGHER output voltage, so peak gas is the highest conversion. On the
+  GM-102B (NO2) it is the opposite, and peak gas is the LOWEST conversion. getPeakGasVoltage_V()
+  and clearPeakGasCounts() pick the right register for you; getLowestConversion() and
   getHighestConversion() remain available if you want the raw registers.
 
   SparkFun Electronics
@@ -29,15 +29,15 @@
 #include <SparkFun_GMX02B.h>
 
 // Uncomment the board you're using
-// SfeGM102BArdI2C mySensor;   // GM-102B - nitrogen dioxide (NO2)
-// SfeGM202BArdI2C mySensor;   // GM-202B - alcohol, smoke
-// SfeGM302BArdI2C mySensor;   // GM-302B - ethanol
-// SfeGM402BArdI2C mySensor;   // GM-402B - methane, propane
-// SfeGM502BArdI2C mySensor;   // GM-502B - VOCs
-// SfeGM512BArdI2C mySensor;   // GM-512B - breath odor
-SfeGM602BArdI2C mySensor;      // GM-602B - hydrogen sulfide (H2S)
-// SfeGM702BArdI2C mySensor;   // GM-702B - carbon monoxide (CO)
-// SfeGM802BArdI2C mySensor;   // GM-802B - ammonia (NH3)
+// SfeGM102BArd mySensor;   // GM-102B - nitrogen dioxide (NO2)
+// SfeGM202BArd mySensor;   // GM-202B - alcohol, smoke
+// SfeGM302BArd mySensor;   // GM-302B - ethanol
+// SfeGM402BArd mySensor;   // GM-402B - methane, propane
+// SfeGM502BArd mySensor;   // GM-502B - VOCs
+// SfeGM512BArd mySensor;   // GM-512B - breath odor
+SfeGM602BArd mySensor;      // GM-602B - hydrogen sulfide (H2S)
+// SfeGM702BArd mySensor;   // GM-702B - carbon monoxide (CO)
+// SfeGM802BArd mySensor;   // GM-802B - ammonia (NH3)
 
 // Report and reset the peak every 10 seconds.
 const unsigned long kWindowMillis = 10000;
@@ -73,19 +73,19 @@ void setup()
     mySensor.clearPeakGasCounts();
     windowStart = millis();
 
-    Serial.println("Current\t\tPeak (10 s window)");
+    Serial.println("Current (V)\tPeak (V, 10 s window)");
 }
 
 void loop()
 {
-    uint16_t peak;
+    float peak;
 
     mySensor.readMeasurement();
-    mySensor.getPeakGasCounts(peak);
+    mySensor.getPeakGasVoltage_V(peak);
 
-    Serial.print(mySensor.getRaw());
+    Serial.print(mySensor.getVoltage_V(), 3);
     Serial.print("\t\t");
-    Serial.print(peak);
+    Serial.print(peak, 3);
 
     if (millis() - windowStart >= kWindowMillis)
     {

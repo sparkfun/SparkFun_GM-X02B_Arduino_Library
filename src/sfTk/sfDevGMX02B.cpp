@@ -30,7 +30,7 @@
 // Sources: Winsen GM-x02B manuals (various revisions) for the electrical and range figures; the
 // SparkFun Qwiic gas sensor board design for the load resistance.
 //
-// Two things to know about the datasheet numbers:
+// Notes on the datasheet numbers:
 //
 //   1. rsMin / rsMax are PART-TO-PART SPREAD at a single reference gas concentration, not the
 //      swing one unit produces. The GM-102B's 10 k to 1 M is a 100:1 manufacturing tolerance.
@@ -55,7 +55,7 @@ static const sfe_gmx02b_part_t kGMParts[GM_PART_COUNT] = {
     // GM-102B - NO2. The family's only oxidizing-gas part: Rs RISES with concentration. The
     // datasheet states R0(air)/Rs(2 ppm NO2) <= 0.5, i.e. Rs >= 2 x R0, hence a rated response of
     // 2.0 in getGasResponse() units. Its Rs decade sits far above the other parts', so this board
-    // carries a 68.1 k load resistor rather than the family's 4.7 k - with 4.7 k, a unit at the
+    // carries a 68.1 k load resistor rather than the family's 4.7 k. With 4.7 k, a unit at the
     // high end of the spread produces under five ADC counts of usable swing.
     // NOTE: Winsen's product page gives the reference concentration as 5 ppm while manual V2.1
     // gives 2 ppm; the manual value is used here.
@@ -78,7 +78,7 @@ static const sfe_gmx02b_part_t kGMParts[GM_PART_COUNT] = {
 
     // GM-512B - breath / mouth odor: H2S, ethanol, acetone. Baseline resistance decade is an order
     // higher than the other reducing-gas parts (10 k to 100 k), which puts its worst-case
-    // quantization at ~2.3 % of reading on the shared 4.7 k load - well below the sensor's own
+    // quantization at ~2.3 % of reading on the shared 4.7 k load, well below the sensor's own
     // repeatability, so the board keeps the family value.
     {0x56, false, 4700.0f, 10000.0f, 100000.0f, 2.0f, 5.0f, 0.5f, 50.0f},
 
@@ -86,8 +86,8 @@ static const sfe_gmx02b_part_t kGMParts[GM_PART_COUNT] = {
     {0x58, false, 4700.0f, 1000.0f, 30000.0f, 3.0f, 50.0f, 0.5f, 50.0f},
 
     // GM-702B - carbon monoxide (CO), also sensitive to H2.
-    // NOTE: this is the only part whose datasheet specifies a CYCLED heater - 2.5 V for 60 s then
-    // 0.5 V for 90 s - rather than a steady voltage. If the board drives the heater at a fixed
+    // NOTE: this is the only part whose datasheet specifies a CYCLED heater (2.5 V for 60 s then
+    // 0.5 V for 90 s) rather than a steady voltage. If the board drives the heater at a fixed
     // voltage, readings will not follow the datasheet's characterization method.
     {0x59, false, 4700.0f, 1000.0f, 30000.0f, 3.0f, 150.0f, 5.0f, 5000.0f},
 
@@ -107,10 +107,10 @@ const sfe_gmx02b_part_t *sfe_gmx02b_partInfo(sfe_gmx02b_sensor_t sensor)
     return &kGMParts[sensor];
 }
 
-// Names live behind a switch rather than in the descriptor struct on purpose: a table of const
-// char* references every literal unconditionally, so the linker must keep all nine strings even in
-// a sketch that never prints one. With a switch, unused arms are discarded - which matters on an
-// AVR, where string literals are copied into RAM at startup.
+// Names are returned from a switch rather than stored in the descriptor struct: a table of const
+// char* references every literal, so the linker must keep all nine strings even in a sketch that
+// never prints one. With a switch, unused arms are discarded. This matters on AVR, where string
+// literals are copied into RAM at startup.
 const char *sfe_gmx02b_partName(sfe_gmx02b_sensor_t sensor)
 {
     switch (sensor)
@@ -165,29 +165,6 @@ const char *sfe_gmx02b_targetGas(sfe_gmx02b_sensor_t sensor)
     }
 }
 
-sfe_gmx02b_sensor_t sfe_gmx02b_sensorFromAddress(uint8_t address)
-{
-    for (uint8_t i = 0; i < GM_PART_COUNT; i++)
-    {
-        if (kGMParts[i].defaultAddress == address)
-            return (sfe_gmx02b_sensor_t)i;
-    }
-
-    return GM_UNKNOWN;
-}
-
-uint8_t sfe_gmx02b_familyAddresses(const uint8_t **addresses)
-{
-    // Ascending order, matching the descriptor table.
-    static const uint8_t kAddresses[GM_PART_COUNT] = {0x50, 0x51, 0x52, 0x54, 0x55,
-                                                        0x56, 0x58, 0x59, 0x5A};
-
-    if (addresses != nullptr)
-        *addresses = kAddresses;
-
-    return GM_PART_COUNT;
-}
-
 // ========================= Setup & Identity ===============================
 
 sfTkError_t sfDevGMX02B::begin(sfTkIBus *theBus)
@@ -206,8 +183,8 @@ sfTkError_t sfDevGMX02B::begin(sfTkIBus *theBus)
 
 bool sfDevGMX02B::isConnected(void)
 {
-    // There is no ID register on either the ADC or the sensing element, so the register-layout
-    // signature is the strongest identity check available. See probeADC().
+    // Neither the ADC nor the sensing element has an ID register, so check the register-layout
+    // signature instead. See probeADC().
     return probeADC();
 }
 
@@ -215,11 +192,11 @@ bool sfDevGMX02B::probeADC(bool assumeUnconfigured)
 {
     // Every 16-bit value register carries its 10 bits in D11:D2, so D15:D12 and D1:D0 must read
     // back as zero. Five registers x 6 bits, plus one reserved config bit, is 31 required-zero
-    // bits - enough to reject a 24-series EEPROM holding anything but zeros.
+    // bits, enough to reject a 24-series EEPROM holding anything but zeros.
     //
-    // Deliberately read-only. A write-and-read-back probe would be a stronger test, but at these
-    // addresses the device might be an EEPROM, and the "register pointer" would be a word address:
-    // the probe itself would destroy customer data.
+    // Read-only. A write-and-read-back probe would be a stronger test, but at these addresses the
+    // device might be an EEPROM, where the "register pointer" is a word address and a write would
+    // overwrite stored data.
     static const uint8_t kValueRegs[] = {kRegLowLimit, kRegHighLimit, kRegHysteresis,
                                          kRegLowestConversion, kRegHighestConversion};
 
@@ -260,16 +237,15 @@ bool sfDevGMX02B::setSensorType(sfe_gmx02b_sensor_t sensor)
 {
     const sfe_gmx02b_part_t *part = sfe_gmx02b_partInfo(sensor);
     if (part == nullptr)
-        return false; // Includes GM_UNKNOWN - leaves the previous part in place.
+        return false; // Includes GM_UNKNOWN; leaves the previous part in place.
 
     _sensorType = sensor;
     _part = part;
 
     // Adopt this board variant's load resistor, discarding any setLoadResistance_Ohm() override. A
-    // stale R0 from a different part would be meaningless, so drop it too.
+    // stale R0 from a different part is not valid, so clear it too.
     _loadResistance = part->loadResistance;
     _cleanAirResistance = 0.0f;
-    _identityAssumed = false;
 
     return true;
 }
@@ -302,11 +278,6 @@ uint8_t sfDevGMX02B::getDefaultAddress(void)
 bool sfDevGMX02B::rsRisesWithGas(void)
 {
     return _part->rsRisesWithGas;
-}
-
-bool sfDevGMX02B::isIdentityAssumed(void)
-{
-    return _identityAssumed;
 }
 
 float sfDevGMX02B::getRangeMin_ppm(void)
@@ -356,8 +327,7 @@ uint16_t sfDevGMX02B::getRaw(void)
 
 float sfDevGMX02B::getVoltage_V(void)
 {
-    // The ADC uses its supply as the reference: 1 LSB = VA / 1024.
-    return (float)_counts * kAdcFullScaleInv * _supplyVoltage;
+    return countsToVoltage_V(_counts);
 }
 
 sfTkError_t sfDevGMX02B::getSensorResistance_Ohm(float &ohms)
@@ -365,10 +335,10 @@ sfTkError_t sfDevGMX02B::getSensorResistance_Ohm(float &ohms)
     ohms = 0.0f;
 
     // The sensor and load resistor form a divider: Vout = VA x RL / (Rs + RL), which rearranges
-    // to Rs = RL x (VA - Vout) / Vout. In ADC counts the supply cancels out entirely:
+    // to Rs = RL x (VA - Vout) / Vout. In ADC counts the supply cancels out:
     // Rs = RL x (1024 - counts) / counts.
     if (_counts == 0)
-        return ksfTkErrFail; // No measurable current through the divider - resistance is off scale.
+        return ksfTkErrFail; // No measurable current through the divider; resistance is off scale.
 
     ohms = _loadResistance * (float)(kAdcFullScale - _counts) / (float)_counts;
     return ksfTkErrOk;
@@ -403,7 +373,7 @@ sfTkError_t sfDevGMX02B::getGasResponse(float &response)
         return rc;
 
     if (rs <= 0.0f)
-        return ksfTkErrFail; // Off scale - no usable response.
+        return ksfTkErrFail; // Off scale, no usable response.
 
     // Normalize so 1.0 is clean air and larger always means more target gas, whichever way this
     // part's sensing element moves. This is also the direction the datasheets quote sensitivity in.
@@ -449,6 +419,12 @@ uint16_t sfDevGMX02B::voltageToCounts(float volts)
         return kAdcMaxCounts;
 
     return (uint16_t)counts;
+}
+
+float sfDevGMX02B::countsToVoltage_V(uint16_t counts)
+{
+    // The ADC uses its supply as the reference: 1 LSB = VA / 1024.
+    return (float)counts * kAdcFullScaleInv * _supplyVoltage;
 }
 
 uint16_t sfDevGMX02B::resistanceToCounts(float ohms)
@@ -506,7 +482,7 @@ sfTkError_t sfDevGMX02B::measureCleanAirResistance(float &r0, uint8_t samples, u
 
     uint16_t average = (uint16_t)(sum / samples);
     if (average == 0)
-        return ksfTkErrFail; // Output too low to compute a resistance - is the sensor preheated?
+        return ksfTkErrFail; // Output too low to compute a resistance. Is the sensor preheated?
 
     r0 = _loadResistance * (float)(kAdcFullScale - average) / (float)average;
     _cleanAirResistance = r0;
@@ -544,8 +520,8 @@ sfTkError_t sfDevGMX02B::getConcentration_ppm(float &ppm)
     if (rc != ksfTkErrOk)
         return rc;
 
-    // Kept out of the measurement path deliberately: pow() drags a sizeable chunk of libm into an
-    // AVR build, and a sketch that never asks for ppm should not pay for it.
+    // Kept out of the measurement path because pow() pulls a large part of libm into an AVR build,
+    // and a sketch that never asks for ppm should not pay for it.
     ppm = _curveA * powf(response, _curveB);
     return ksfTkErrOk;
 }
@@ -627,7 +603,7 @@ sfTkError_t sfDevGMX02B::getAlertHysteresis_mV(float &millivolts)
     if (rc != ksfTkErrOk)
         return rc;
 
-    millivolts = (float)counts * kAdcFullScaleInv * _supplyVoltage * 1000.0f;
+    millivolts = countsToVoltage_V(counts) * 1000.0f;
     return ksfTkErrOk;
 }
 
@@ -696,6 +672,19 @@ sfTkError_t sfDevGMX02B::getPeakGasCounts(uint16_t &counts)
 {
     // Peak gas is the highest conversion on a falling-Rs part and the lowest on a rising-Rs one.
     return _part->rsRisesWithGas ? getLowestConversion(counts) : getHighestConversion(counts);
+}
+
+sfTkError_t sfDevGMX02B::getPeakGasVoltage_V(float &volts)
+{
+    volts = 0.0f;
+
+    uint16_t counts = 0;
+    sfTkError_t rc = getPeakGasCounts(counts);
+    if (rc != ksfTkErrOk)
+        return rc;
+
+    volts = countsToVoltage_V(counts);
+    return ksfTkErrOk;
 }
 
 sfTkError_t sfDevGMX02B::clearPeakGasCounts(void)
