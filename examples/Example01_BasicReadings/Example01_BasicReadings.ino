@@ -34,15 +34,15 @@
 #include <SparkFun_GMX02B.h>
 
 // Uncomment the board you're using
-// SfeGM102BArdI2C mySensor;   // GM-102B - nitrogen dioxide (NO2)
-// SfeGM202BArdI2C mySensor;   // GM-202B - alcohol, smoke
-// SfeGM302BArdI2C mySensor;   // GM-302B - ethanol
-// SfeGM402BArdI2C mySensor;   // GM-402B - methane, propane
-// SfeGM502BArdI2C mySensor;   // GM-502B - VOCs
-// SfeGM512BArdI2C mySensor;   // GM-512B - breath odor
-SfeGM602BArdI2C mySensor;      // GM-602B - hydrogen sulfide (H2S)
-// SfeGM702BArdI2C mySensor;   // GM-702B - carbon monoxide (CO)
-// SfeGM802BArdI2C mySensor;   // GM-802B - ammonia (NH3)
+// SfeGM102BArd mySensor;   // GM-102B - nitrogen dioxide (NO2)
+// SfeGM202BArd mySensor;   // GM-202B - alcohol, smoke
+// SfeGM302BArd mySensor;   // GM-302B - ethanol
+// SfeGM402BArd mySensor;   // GM-402B - methane, propane
+// SfeGM502BArd mySensor;   // GM-502B - VOCs
+// SfeGM512BArd mySensor;   // GM-512B - breath odor
+SfeGM602BArd mySensor;      // GM-602B - hydrogen sulfide (H2S)
+// SfeGM702BArd mySensor;   // GM-702B - carbon monoxide (CO)
+// SfeGM802BArd mySensor;   // GM-802B - ammonia (NH3)
 
 void setup()
 {
@@ -55,7 +55,7 @@ void setup()
     {
         Serial.print("No ");
         Serial.print(mySensor.getSensorName());
-        Serial.println(" found - check your wiring!");
+        Serial.println(" found, check your wiring!");
         delay(1000);
     }
 

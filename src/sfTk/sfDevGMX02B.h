@@ -11,7 +11,7 @@
  *
  * The ADC101C021 also provides a programmable out-of-range alert function: with automatic
  * conversion mode enabled, the ADC monitors the sensor continuously in hardware and flags (or
- * signals on its ALERT pin) whenever the reading crosses a programmable high or low limit - no
+ * signals on its ALERT pin) whenever the reading crosses a programmable high or low limit, with no
  * polling required. The lowest and highest conversion results are tracked in hardware as well.
  *
  * @note SENSOR DIRECTION. Eight of the nine elements sense reducing gases: their resistance (Rs)
@@ -26,7 +26,7 @@
  * for the output to settle after power-up, and 24 to 168 hours of powered aging after long unpowered
  * storage (the exact schedule is per-part; see the datasheet). Out of the box these sensors are good
  * for relative measurement and threshold alerts. Absolute ppm requires calibration against a known
- * gas concentration - see setResponseCurve().
+ * gas concentration (see setResponseCurve()).
  *
  * @author SparkFun Electronics
  * @date September 2026
@@ -53,12 +53,11 @@
 /**
  * @brief The Winsen GM-x02B sensing elements carried by the SparkFun Qwiic gas sensor boards.
  *
- * @details These are ordinals, not I2C addresses - they index the per-part descriptor table. Use
+ * @details These are ordinals, not I2C addresses; they index the per-part descriptor table. Use
  * sfe_gmx02b_partInfo() or getDefaultAddress() to obtain a part's factory address.
  *
  * @note The onboard ADC101C021 has no product ID register, so the sensing element cannot be read
- * back from the hardware. Which variant is installed is a fact about the board that was purchased;
- * it must be declared by the sketch, or assumed from the I2C address (see isIdentityAssumed()).
+ * back from the hardware and must be declared by the sketch.
  */
 typedef enum sfe_gmx02b_sensor_t : uint8_t
 {
@@ -105,7 +104,7 @@ typedef enum sfe_gmx02b_cycle_time_t : uint8_t
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * @brief Everything the driver needs to know about one GM-x02B variant and its board.
+ * @brief Per-part parameters for one GM-x02B variant and its board.
  *
  * @details One const instance per family member, indexed by ::sfe_gmx02b_sensor_t. This is the only
  * place in the library that carries part-specific knowledge; adding a variant means adding a row.
@@ -151,24 +150,6 @@ const char *sfe_gmx02b_partName(sfe_gmx02b_sensor_t sensor);
  */
 const char *sfe_gmx02b_targetGas(sfe_gmx02b_sensor_t sensor);
 
-/**
- * @brief Map a factory-default I2C address back to its family member.
- *
- * @note This is an ASSUMPTION, not a measurement - it holds only while a board's ADR jumpers are
- * at their factory setting and no other device occupies a family address.
- *
- * @param address The 7-bit I2C address.
- * @return The matching variant, or ::GM_UNKNOWN.
- */
-sfe_gmx02b_sensor_t sfe_gmx02b_sensorFromAddress(uint8_t address);
-
-/**
- * @brief Get the family's nine factory-default addresses, in ascending order.
- * @param addresses Output pointer that receives the address table.
- * @return The number of addresses in the table.
- */
-uint8_t sfe_gmx02b_familyAddresses(const uint8_t **addresses);
-
 ///////////////////////////////////////////////////////////////////////////////
 // Class Declaration
 ///////////////////////////////////////////////////////////////////////////////
@@ -195,8 +176,8 @@ class sfDevGMX02B
      *
      * @details The sensing element cannot be identified from the hardware, so declaring it here is
      * how the driver learns the curve direction and the board's load resistance. There is
-     * deliberately no default: a wrong part silently inverts the GM-102B's readings and picks the
-     * wrong load resistor, so the library makes you say which board you have.
+     * no default, because the wrong part inverts the GM-102B's readings and selects the wrong load
+     * resistor.
      *
      * @param sensor The sensor variant installed on the board. ::GM_UNKNOWN and
      * out-of-range values are a programming error; they fall back to the GM-602B's circuit
@@ -224,12 +205,10 @@ class sfDevGMX02B
      *
      * @details Verifies that the device at the configured address has the register signature of an
      * ADC101C021 (see probeADC()). begin() calls this, so a successful begin() means the board
-     * both answered and looked right.
+     * responded with a valid register signature.
      *
-     * @note Unlike most SparkFun boards, this one has no ID register to verify identity against -
-     * the ADC101C021 does not have one, and neither does the Winsen sensing element. The register
-     * signature is the closest available substitute, and it confirms the ADC, never which gas
-     * sensor is wired to it.
+     * @note Neither the ADC101C021 nor the Winsen sensing element has an ID register. The register
+     * signature confirms the ADC is present, but not which gas sensor is connected to it.
      *
      * @return true if the device responds and its register signature matches.
      */
@@ -242,16 +221,15 @@ class sfDevGMX02B
      * D1:D0 and D15:D12 read back as zero on every value register, and D1 of the 8-bit
      * configuration register is reserved-zero. That is 31 required-zero bits across six registers.
      *
-     * This check is deliberately READ-ONLY. Addresses 0x50 to 0x57 are also the classic 24-series
+     * This check is read-only. Addresses 0x50 to 0x57 are also the classic 24-series
      * EEPROM block (SparkFun's own Qwiic EEPROM defaults to 0x50), and writing a probe pattern to
      * a register that turned out to be an EEPROM word address would corrupt a customer's data.
      *
-     * @note This confirms the ADC, never the gas sensor. A fully zeroed EEPROM would also pass, so
-     * treat a true result as raised confidence rather than proof of identity.
+     * @note This confirms the ADC, not the gas sensor. A fully zeroed EEPROM would also pass.
      *
      * @param assumeUnconfigured If true, additionally require the alert limit registers to hold
-     * their power-on values (low = 0, high = 1023). Much stronger, but only valid before the
-     * sketch has configured the alert function.
+     * their power-on values (low = 0, high = 1023). This is a stronger check, but only valid
+     * before the sketch has configured the alert function.
      * @return true if the device's registers are consistent with an ADC101C021.
      */
     bool probeADC(bool assumeUnconfigured = false);
@@ -263,7 +241,7 @@ class sfDevGMX02B
      *
      * @details Also resets the load resistance to the board default for that variant, discarding
      * any prior setLoadResistance_Ohm() override. Does not touch the stored clean-air resistance, which
-     * is no longer meaningful if the part changed - re-run measureCleanAirResistance().
+     * is no longer valid if the part changed; re-run measureCleanAirResistance().
      *
      * @param sensor The sensor variant. ::GM_UNKNOWN and out-of-range values are rejected.
      * @return true if the variant was accepted.
@@ -271,7 +249,7 @@ class sfDevGMX02B
     bool setSensorType(sfe_gmx02b_sensor_t sensor);
 
     /**
-     * @brief Get the declared (or assumed) sensor variant.
+     * @brief Get the declared sensor variant.
      * @return The sensor variant.
      */
     sfe_gmx02b_sensor_t getSensorType(void);
@@ -310,17 +288,6 @@ class sfDevGMX02B
      * @return true if sensor resistance increases with gas concentration.
      */
     bool rsRisesWithGas(void);
-
-    /**
-     * @brief Report whether the sensor identity was assumed rather than declared.
-     *
-     * @details Set when the identity came from an I2C address scan instead of the constructor or
-     * setSensorType(). An assumed identity is only as good as the board's jumper settings, and it
-     * selects the curve direction - so sketches and diagnostics should surface it.
-     *
-     * @return true if the identity was inferred from the I2C address.
-     */
-    bool isIdentityAssumed(void);
 
     /**
      * @brief Get the low end of the part's detection range.
@@ -442,7 +409,8 @@ class sfDevGMX02B
     // ====================== Board Circuit Parameters ======================
 
     /**
-     * @brief Set the sensing circuit supply voltage used by getVoltage_V() and voltageToCounts().
+     * @brief Set the sensing circuit supply voltage used by getVoltage_V(), voltageToCounts() and
+     * countsToVoltage_V().
      *
      * @details The ADC101C021 uses its supply as the conversion reference. On the SparkFun boards
      * both the ADC and the sensing loop run from the 3.3 V Qwiic rail (the default).
@@ -483,6 +451,18 @@ class sfDevGMX02B
      * @return Equivalent ADC counts (0 to 1023).
      */
     uint16_t voltageToCounts(float volts);
+
+    /**
+     * @brief Convert 10-bit ADC counts into the equivalent sensor output voltage.
+     *
+     * @details The inverse of voltageToCounts(): volts = counts / 1024 x supply voltage. Useful for
+     * expressing raw register values, such as the alert limits or the lowest / highest conversion
+     * registers, in volts.
+     *
+     * @param counts Raw ADC counts (0 to 1023).
+     * @return Equivalent sensor output voltage in volts.
+     */
+    float countsToVoltage_V(uint16_t counts);
 
     /**
      * @brief Convert a sensor resistance into the equivalent 10-bit ADC counts.
@@ -548,7 +528,7 @@ class sfDevGMX02B
      *
      * @details Defines ppm = a x pow(getGasResponse(), b). No coefficients are shipped with this
      * library, and none should be inferred from the datasheets: Winsen publishes no numeric curve
-     * data for any GM-x02B part, and the GM-602B manual explicitly describes the sensitivity as
+     * data for any GM-x02B part, and the GM-602B manual describes the sensitivity as
      * "non linear, hysteretic and non-repetitive". Fit @p a and @p b yourself against known gas
      * concentrations for your part, in your enclosure, at your operating temperature and humidity.
      *
@@ -581,7 +561,7 @@ class sfDevGMX02B
      * @brief Set a hardware gas threshold in gas response units.
      *
      * @details Converts @p response into ADC counts and writes it to whichever limit register
-     * corresponds to "more gas" for this part - the high limit on falling-Rs parts, the low limit
+     * corresponds to "more gas" for this part: the high limit on falling-Rs parts, the low limit
      * on the GM-102B. Pair with getGasAlert(), which maps the status flags back the same way.
      *
      * @note Writes one limit register and leaves the other alone. If you previously set the other
@@ -664,9 +644,8 @@ class sfDevGMX02B
     /**
      * @brief Set the alert hysteresis as a sensor-output voltage band.
      *
-     * @details Convenience form of setAlertHysteresis() - the ADC's hysteresis field is in raw
-     * counts, which is not a quantity anyone thinks in. Hysteresis is linear in the sensor's
-     * output voltage, so millivolts convert exactly.
+     * @details Convenience form of setAlertHysteresis(), which takes raw counts. Hysteresis is
+     * linear in the sensor's output voltage, so millivolts convert exactly.
      *
      * @param millivolts Hysteresis in millivolts of sensor output.
      * @return ::ksfTkErrOk on success, or an error code on failure.
@@ -693,20 +672,20 @@ class sfDevGMX02B
      *
      * @details The ALERT pin is broken out on the board's PTH header. Per the ADC101C021
      * datasheet it "is an open drain data line that must be pulled to the supply (VA) with an
-     * external pull-up resistor" - open-drain in BOTH polarity modes, since setAlertPinActiveHigh()
-     * changes only the logic sense, not the output structure.
+     * external pull-up resistor". It is open-drain in both polarity modes, since
+     * setAlertPinActiveHigh() changes only the logic sense, not the output structure.
      *
-     * @warning THE SPARKFUN BOARD DOES NOT POPULATE A PULL-UP ON ALERT. Nothing holds the pin
-     * high on its own, so it floats and reads as garbage until you provide one.
+     * @warning THE SPARKFUN BOARD DOES NOT POPULATE A PULL-UP ON ALERT. The pin floats until you
+     * provide one.
      *
      * @note An external resistor is usually unnecessary: the pin's high-impedance leakage is 1 uA
      * max, so an MCU's internal pull-up (pinMode(pin, INPUT_PULLUP), typically 20-50 kOhm) holds it
      * within ~50 mV of the rail. Fit a discrete 10 kOhm to 3.3 V when the MCU pin has no internal
-     * pull-up, when several boards share one alert line, or when a long trace needs faster edges -
-     * that gives 330 uA of sink current, 10 mV of droop and a ~0.2 us edge. Stay between 1 kOhm
-     * and 100 kOhm. Pulling low is never the problem - VOL is 0.4 V max at 3 mA.
+     * pull-up, when several boards share one alert line, or when a long trace needs faster edges.
+     * That gives 330 uA of sink current, 10 mV of droop and a ~0.2 us edge. Stay between 1 kOhm
+     * and 100 kOhm. Pulling low is not an issue: VOL is 0.4 V max at 3 mA.
      *
-     * @note You do not need the pin at all to use the alert function. getGasAlert() reads the same
+     * @note The pin is not required to use the alert function. getGasAlert() reads the same
      * condition over I2C. When the pin is disabled (the default), it stays high-impedance.
      *
      * @param enable true to enable the ALERT pin, false to disable it.
@@ -725,7 +704,7 @@ class sfDevGMX02B
      * @brief Enable or disable alert hold.
      *
      * @details When enabled, alerts do not self-clear when the reading moves back within the
-     * limits - they persist until cleared with clearAlertStatus().
+     * limits; they persist until cleared with clearAlertStatus().
      *
      * @param enable true to hold alerts, false to allow self-clearing.
      * @return ::ksfTkErrOk on success, or an error code on failure.
@@ -761,8 +740,8 @@ class sfDevGMX02B
      * @details With a non-zero cycle time, the ADC converts continuously on its own: the alert
      * limits are evaluated and the lowest / highest conversion registers are updated after every
      * conversion, with no I2C traffic required. Pass ::GM_CYCLE_DISABLED to return to normal mode.
-     * Slower cycle times use less power; ::GM_CYCLE_TIME_2048 is plenty for a slow-responding MOS
-     * gas sensor.
+     * Slower cycle times use less power; ::GM_CYCLE_TIME_2048 is sufficient for a slow-responding
+     * MOS gas sensor.
      *
      * @param cycleTime The conversion interval (see ::sfe_gmx02b_cycle_time_t).
      * @return ::ksfTkErrOk on success, or an error code on failure.
@@ -779,7 +758,7 @@ class sfDevGMX02B
     /**
      * @brief Get the peak GAS conversion recorded in automatic conversion mode.
      *
-     * @details Reads whichever hardware extremum register corresponds to "most gas" for this part -
+     * @details Reads whichever hardware extremum register corresponds to "most gas" for this part:
      * the highest conversion on falling-Rs parts, the lowest on the GM-102B. Only updated while
      * automatic conversion mode is active.
      *
@@ -787,6 +766,16 @@ class sfDevGMX02B
      * @return ::ksfTkErrOk on success, or an error code on failure.
      */
     sfTkError_t getPeakGasCounts(uint16_t &counts);
+
+    /**
+     * @brief Get the peak gas conversion as a sensor output voltage.
+     *
+     * @details Same as getPeakGasCounts(), converted with countsToVoltage_V().
+     *
+     * @param volts Output reference that receives the peak sensor output voltage in volts.
+     * @return ::ksfTkErrOk on success, or an error code on failure.
+     */
+    sfTkError_t getPeakGasVoltage_V(float &volts);
 
     /**
      * @brief Reset the peak gas tracking register for this part.
@@ -888,9 +877,8 @@ class sfDevGMX02B
     sfTkIBus *_theBus; ///< Pointer to the communication bus device.
 
     // --- Sensor identity ---
-    sfe_gmx02b_sensor_t _sensorType = GM_602B; ///< Declared or assumed sensor variant.
+    sfe_gmx02b_sensor_t _sensorType = GM_602B; ///< Declared sensor variant.
     const sfe_gmx02b_part_t *_part = nullptr;         ///< Descriptor for _sensorType. Never null after construction.
-    bool _identityAssumed = false;                ///< True if _sensorType came from an address scan.
 
     // --- Cached values from the most recent readMeasurement() ---
     uint16_t _counts = 0;    ///< Raw 10-bit ADC value.

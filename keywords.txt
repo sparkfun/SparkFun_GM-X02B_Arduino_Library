@@ -1,16 +1,16 @@
 # Syntax Coloring Map for SparkFun GM-X02B Arduino Library
 
 # Datatypes / Classes (KEYWORD1)
-SfeGMX02BArdI2C	KEYWORD1
-SfeGM102BArdI2C	KEYWORD1
-SfeGM202BArdI2C	KEYWORD1
-SfeGM302BArdI2C	KEYWORD1
-SfeGM402BArdI2C	KEYWORD1
-SfeGM502BArdI2C	KEYWORD1
-SfeGM512BArdI2C	KEYWORD1
-SfeGM602BArdI2C	KEYWORD1
-SfeGM702BArdI2C	KEYWORD1
-SfeGM802BArdI2C	KEYWORD1
+SfeGMX02BArd	KEYWORD1
+SfeGM102BArd	KEYWORD1
+SfeGM202BArd	KEYWORD1
+SfeGM302BArd	KEYWORD1
+SfeGM402BArd	KEYWORD1
+SfeGM502BArd	KEYWORD1
+SfeGM512BArd	KEYWORD1
+SfeGM602BArd	KEYWORD1
+SfeGM702BArd	KEYWORD1
+SfeGM802BArd	KEYWORD1
 sfDevGMX02B	KEYWORD1
 sfe_gmx02b_sensor_t	KEYWORD1
 sfe_gmx02b_cycle_time_t	KEYWORD1
@@ -18,9 +18,6 @@ sfe_gmx02b_part_t	KEYWORD1
 
 # Methods and Functions (KEYWORD2)
 begin	KEYWORD2
-beginAutoDetect	KEYWORD2
-scanFamily	KEYWORD2
-findMisplacedBoard	KEYWORD2
 isConnected	KEYWORD2
 probeADC	KEYWORD2
 getAddress	KEYWORD2
@@ -31,7 +28,6 @@ getSensorName	KEYWORD2
 getTargetGas	KEYWORD2
 getDefaultAddress	KEYWORD2
 rsRisesWithGas	KEYWORD2
-isIdentityAssumed	KEYWORD2
 getRangeMin_ppm	KEYWORD2
 getRangeMax_ppm	KEYWORD2
 getRatedSensitivity	KEYWORD2
@@ -48,6 +44,7 @@ getSupplyVoltage_V	KEYWORD2
 setLoadResistance_Ohm	KEYWORD2
 getLoadResistance_Ohm	KEYWORD2
 voltageToCounts	KEYWORD2
+countsToVoltage_V	KEYWORD2
 resistanceToCounts	KEYWORD2
 responseToCounts	KEYWORD2
 measureCleanAirResistance	KEYWORD2
@@ -75,6 +72,7 @@ clearAlertStatus	KEYWORD2
 setCycleTime	KEYWORD2
 getCycleTime	KEYWORD2
 getPeakGasCounts	KEYWORD2
+getPeakGasVoltage_V	KEYWORD2
 clearPeakGasCounts	KEYWORD2
 getLowestConversion	KEYWORD2
 getHighestConversion	KEYWORD2
@@ -83,8 +81,6 @@ clearHighestConversion	KEYWORD2
 sfe_gmx02b_partInfo	KEYWORD2
 sfe_gmx02b_partName	KEYWORD2
 sfe_gmx02b_targetGas	KEYWORD2
-sfe_gmx02b_sensorFromAddress	KEYWORD2
-sfe_gmx02b_familyAddresses	KEYWORD2
 
 # Constants (LITERAL1)
 GM_102B	LITERAL1
